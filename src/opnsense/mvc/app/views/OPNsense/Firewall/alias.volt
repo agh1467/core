@@ -111,6 +111,38 @@
         }
 
         /**
+         * manully re-stripe rows of table given a form id
+         **/
+        function restripe (form_id) {
+            var this_form = $("form[id=" + form_id + "]");          // Locate the form with the given id
+            var this_table = this_form.find("table").first();       // Get the first table in the form
+            var this_tbody = this_table.first().children("tbody");  // Get the first tbody of the table
+            var rows_vis = this_tbody.children("tr:visible");       // Get visible rows from the tbody
+            var rows_fst = this_tbody.find("tr").first();           // Get the first row
+            // Grab the background color from the table DOM itself
+            var bg_1 = this_table.css("background-color");
+            // Grab the background color of the first td DOM within the rows themselves.
+            var bg_2 = rows_fst.children("td").first().css("background-color");
+            // If we have both colors, we're good to go.
+            if (bg_1 && bg_2) {
+                rows_vis.each(function (index) {
+                    // Set the background color of the td DOMs according to the index
+                    // Alternate background color on even/odd indexes
+                    if (!!(index & 1)) {
+                        $(this).find("td").each(function () {
+                            $(this).css("background-color", bg_1);
+                        });
+                    } else {
+                        $(this).find("td").each(function () {
+                            $(this).css("background-color", bg_2);
+                        });
+                    }
+                });
+           };
+        };
+
+
+        /**
          * fetch regions and countries for geoip selection
          */
         ajaxGet("/api/firewall/alias/listCountries", {}, function(data){
@@ -238,6 +270,15 @@
             } else {
                 $("#row_alias\\.counters").show();
             }
+            // Restripe the rows to match the visibility of the rows.
+            restripe ("frm_DialogAlias");
+        });
+
+        /**
+         * Whenever the dialog focus event occurs, restripe the rows
+         */
+        $("#DialogAlias").on('focus', function() {
+            restripe ("frm_DialogAlias");
         });
 
         /**
