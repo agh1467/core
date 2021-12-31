@@ -264,6 +264,16 @@
                                     case 'info':
                                         log_td.html('<button class="act_info btn btn-xs fa fa-info-circle" aria-hidden="true"></i>');
                                         break;
+                                    case 'string':
+                                        if (field['column-id'] == "label") {
+                                            // decode encoded HTML entities just for the label field
+                                            var tmp_text_area = document.createElement('textarea');
+                                            tmp_text_area.innerHTML = record[column_name];
+                                            log_td.text(tmp_text_area.value);
+                                        } else {
+                                            log_td.text(record[column_name]);
+                                        }
+                                        break;
                                     default:
                                         if (record[column_name] != undefined) {
                                             log_td.text(record[column_name]);
