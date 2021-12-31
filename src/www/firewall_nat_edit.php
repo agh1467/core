@@ -332,6 +332,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $filterent['descr'] = $pconfig['descr'];
             $filterent['category'] = $natent['category'];
 
+            // Only works for single interface selection, and single ip protocol (IPv4, IPv6) selection
+            foreach ($config['gateways']['gateway_item'] as $gateway) {
+                if ($gateway['interface'] == $natent['interface']
+                    and $gateway['ipprotocol'] == $natent['ipprotocol']) {
+                    $filterent['gateway'] = $gateway['name'];
+                    break;
+                }
+            }
+
             // If this is a new rule, create an ID and add the rule
             if (!empty($pconfig['filter-rule-association']) && $pconfig['filter-rule-association'] != 'pass') {
                 if ($pconfig['filter-rule-association'] == 'add-associated') {
