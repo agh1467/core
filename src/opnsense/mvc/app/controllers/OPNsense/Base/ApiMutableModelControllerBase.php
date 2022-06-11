@@ -303,6 +303,139 @@ abstract class ApiMutableModelControllerBase extends ApiControllerBase
     }
 
     /**
+     * This is a super API for Bootgrid which will do all the things.
+     *
+     * Instead of having many copies of the same functions over and over, this
+     * function replaces all of them, and it requires only setting a couple of
+     * variables and adjusting the conditional statements to add or remove
+     * grids.
+     *
+     * API endpoint:
+     *
+     *   `/api/dnscryptproxy/settings/grid`
+     *
+     * Parameters for this function are passed in via POST/GET request in the URL like so:
+     * ```
+     * |-------API Endpoint (Here)-----|api|----$target---|--------------$uuid----------------|
+     * api/dnscryptproxy/settings/grid/get/servers.server/9d606689-19e0-48a7-84b2-9173525255d8
+     * ```
+     * This handles all of the bootgrid API calls, and keeps everything in
+     * a single function. Everything is controled via the `$target` and
+     * pre-defined variables which include the config path, and the
+     * key name for the edit dialog.
+     *
+     * A note on the edit dialog, the `$key_name` must match the prefix of
+     * the IDs of the fields defined in the form data for that dialog.
+     *
+     * Example:
+     * ```
+     *  <field>
+     *     <id>server.enabled</id>
+     *     <label>Enabled</label>
+     *     <type>checkbox</type>
+     *     <help>This will enable or disable the server stamp.</help>
+     *  </field>
+     * ```
+     *
+     * For the case above, the `$key_name` must be: "server"
+     *
+     * This correlates to the config path:
+     *
+     * `//OPNsense/dnscrypt-proxy/servers/server`
+     *
+     * `servers` is the ArrayField that these bootgrid functions are designed
+     *           for.
+     *
+     * `server`  is the final node in the config path, and are
+     *           entries in the ArrayField.
+     *
+     * The `$key_name`, the final node in the path, and the field ids in the form
+     * XML must match. The field <id> is important because when `mapDataToFormUI()`
+     * runs to populate the fields with data, the scope is just the dialog
+     * box (which includes the fields). It will try to match ids with the
+     * data it receives, and it splits up the ids at the period, using the
+     * first element as its `key_name` for matching. This is also how the main
+     * form works, and why all of those ids are prefixed with the model name.
+     *
+     * So get/set API calls return a JSON with a key named 'server', and the
+     * data gets sent to fields which have a dotted prefix of the same name.
+     * This links these elements together, though they are not directly
+     * linked, only merely aligned together.
+     *
+     * Upon saving (using `setBase()`) it sends the POST data specified
+     * in the function call wholesale, that array has to overlay perfectly
+     * on the model.
+     *
+     * @param string       $action The desired action to take for the API call.
+     * @param string       $target The desired pre-defined target for the API.
+     * @param string       $uuid   The UUID of the target object.
+     * @return array Array to be consumed by bootgrid.
+     */
+    public function bootgridAction($action, $target, $uuid = null)
+    {
+        if (in_array($action, array(
+                'search',
+                'get',
+                'set',
+                'add',
+                'del',
+                'toggle',
+            ))
+        ) { // Check that we only operate on valid actions.
+            //if (array_key_exists($target, $this->valid_grid_targets)) {  // Only operate on valid targets.
+                $tmp = explode('.', $target);  // Split target on dots, have to use a temp var here.
+                $key_name = end($tmp);         // Get the last node from the path, and this will be our $key_name.
+
+                // Create a Settings class object to use for configd_name.
+                $settings = new Settings();
+
+                switch (true) {
+                    case ($action === 'search' && isset($this->valid_grid_targets[$target])):
+                        // Take care of special mode searches first.
+                        //if (isset($this->valid_grid_targets[$target]['mode'])) {
+                        //    if ($this->valid_grid_targets[$target]['mode'] == 'configd_cmd') {
+                        //        return $this->bootgridConfigd(
+                        //            $settings->configd_name . ' ' . $target,
+                        //            $this->valid_grid_targets[$target]['columns']
+                        //        );
+                        //    }
+                        //} elseif (isset($target)) { // All other searches, check $target is set.
+                            return $this->searchBase($target, $this->valid_grid_targets[$target]['columns']);
+                        //}
+                        // no break
+                    case ($action === 'get' && isset($key_name) && isset($target)):
+                        return $this->getBase($key_name, $target, $uuid);
+                    case ($action === 'add' && isset($key_name) && isset($target)):
+                        return $this->addBase($key_name, $target);
+                    case ($action === 'del' && isset($target) && isset($uuid)):
+                        return $this->delBase($target, $uuid);
+                    case ($action === 'set' && isset($key_name) && isset($target) && isset($uuid)):
+                        return $this->setBase($key_name, $target, $uuid);
+                    case ($action === 'toggle' && isset($target) && isset($uuid)):
+                        return $this->toggleBase($target, $uuid);
+                    default:
+                        // If we get here it's probably a bug in this function.
+                        $result['message'] =
+                            'Some parameters were missing for action "' . $action . '" on target "' . $target . '"';
+                }
+            //} else {
+            //    $result['message'] = 'Unsupported target ' . $target;
+            //}
+        } else {
+            $result['message'] = 'Action "' . $action . '" not found.';
+        }
+        // Since we've gotten here, no valid options were presented,
+        // we need to return a valid array for the bootgrid to consume though.
+        $result['rows'] = array();
+        $result['rowCount'] = 0;
+        $result['total'] = 0;
+        $result['current'] = 1;
+        $result['status'] = 'failed';
+
+        return $result;
+    }
+
+    /**
      * Model search wrapper
      * @param string $path path to search, relative to this model
      * @param array $fields fieldnames to fetch in result
