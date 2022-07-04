@@ -201,8 +201,8 @@ class HandlerClient(threading.Thread):
                     # send response back to client( including trailing enter )
                     try:
                         self.connection.sendall(('%s\n' % result).encode())
-                    except BrokenPipeError:
-                        pass
+                    except BrokenPipeError as e:
+                        raise Exception('socket connection terminated before execution finished') from e
                 else:
                     # log response
                     syslog_info("message %s [%s.%s] returned %s " % (
@@ -211,12 +211,7 @@ class HandlerClient(threading.Thread):
 
             # send end of stream characters
             if not exec_in_background:
-                try:
-                    self.connection.sendall(("%c%c%c" % (chr(0), chr(0), chr(0))).encode())
-                except BrokenPipeError:
-                    syslog_notice('socket connection terminated before execution finished [%s] for [%s][%s][%s] {%s}' % (
-                        result, exec_command, exec_action, exec_params, self.message_uuid
-                    ))
+                self.connection.sendall(("%c%c%c" % (chr(0), chr(0), chr(0))).encode())
         except SystemExit:
             # ignore system exit related errors
             pass
