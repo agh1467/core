@@ -68,10 +68,14 @@ class TextField extends BaseField
     public function getValidators()
     {
         $validators = parent::getValidators();
-        if ($this->internalValue != null) {
-            if ($this->internalValue != null && $this->internalMask != null) {
-                $validators[] = new Regex(array('message' => $this->internalValidationMessage,
-                    'pattern' => trim($this->internalMask)));
+        if (!($this->internalValue === null)) {
+            if (!($this->internalMask === null)) {
+                $validators[] = new Regex(
+                    array(
+                        'message' => $this->internalValidationMessage,
+                        'pattern' => trim($this->internalMask)
+                    )
+                );
             }
         }
         return $validators;
